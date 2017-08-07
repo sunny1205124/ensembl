@@ -1261,7 +1261,7 @@ sub store {
   if ($analysis->is_stored($db)) {
     $analysis_id = $analysis->dbID();
   } else {
-    $self->dbc->do("LOCK TABLES analysis WRITE");
+    $self->dbc->do("LOCK TABLES analysis WRITE, analysis_description WRITE");
     $analysis_id = $db->get_AnalysisAdaptor->store($analysis);
     $self->dbc->do("UNLOCK TABLES");
   }
