@@ -1261,9 +1261,10 @@ sub store {
   if ($analysis->is_stored($db)) {
     $analysis_id = $analysis->dbID();
   } else {
-    $self->dbc->do("LOCK TABLES analysis WRITE, analysis_description WRITE");
+    $self->dbc->do("LOCK TABLES analysis WRITE, analysis_description WRITE")
+      if $self->dbc->driver eq 'mysql';
     $analysis_id = $db->get_AnalysisAdaptor->store($analysis);
-    $self->dbc->do("UNLOCK TABLES");
+    $self->dbc->do("UNLOCK TABLES") if $self->dbc->driver eq 'mysql';
   }
 
   my $type = $gene->biotype || "";
