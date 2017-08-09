@@ -1257,16 +1257,20 @@ sub store {
   my $analysis = $gene->analysis();
   throw("Genes must have an analysis object.") if (!defined($analysis));
 
+  my $helper = $self->dbc->sql_helper;
   my $analysis_id;
-  if ($analysis->is_stored($db)) {
-    $analysis_id = $analysis->dbID();
-  } else {
-    $self->dbc->do("LOCK TABLES analysis WRITE, analysis_description WRITE")
-      if $self->dbc->driver eq 'mysql';
-    $analysis_id = $db->get_AnalysisAdaptor->store($analysis);
-    $self->dbc->do("UNLOCK TABLES") if $self->dbc->driver eq 'mysql';
-  }
-
+  $analysis_id = $helper->transaction(
+				      -CALLBACK =>
+				      sub {
+					if ($analysis->is_stored($db)) {
+					  $analysis_id = $analysis->dbID();
+					} else { 
+					  $analysis_id = $db->get_AnalysisAdaptor->store($analysis);
+					}
+					
+					return $analysis_id;
+				      });
+  
   my $type = $gene->biotype || "";
 
   # default to is_current = 1 if this attribute is not set
