@@ -1260,6 +1260,8 @@ sub store {
   my $helper = $self->dbc->sql_helper;
   my $analysis_id;
   $analysis_id = $helper->transaction(
+				      -RETRY    => 3,
+				      -PAUSE    => 5,
 				      -CALLBACK =>
 				      sub {
 					if ($analysis->is_stored($db)) {
