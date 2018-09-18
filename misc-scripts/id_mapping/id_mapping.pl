@@ -144,6 +144,7 @@ my $exon_mappings;
 my $transcript_mappings;
 my $gene_mappings;
 my $translation_mappings;
+my $rnaproduct_mappings;
 
 # loading cache from file
 my $cache = Bio::EnsEMBL::IdMapping::Cache->new(
@@ -281,6 +282,12 @@ sub map {
     $translation_mappings = $internal_id_mapper->map_translations(
       $transcript_mappings);
   }
+
+  # map rnaproducts
+  if ($mapping_types{'rnaproduct'}) {
+    $rnaproduct_mappings = $internal_id_mapper->map_rnaproducts(
+      $transcript_mappings);
+  }
 }
 
 
@@ -303,6 +310,11 @@ sub assign_stable_ids {
   # translations
   if ($mapping_types{'translation'}) {
     $stable_id_mapper->map_stable_ids($translation_mappings, 'translation');
+  }
+
+  # rnaproducts
+  if ($mapping_types{'rnaproduct'}) {
+    $stable_id_mapper->map_stable_ids($rnaproduct_mappings, 'rnaproduct');
   }
 
   # genes
@@ -350,6 +362,13 @@ sub generate_similarity_events {
     $logger->debug("translations\n", 1);
     $stable_id_mapper->generate_translation_similarity_events(
       $translation_mappings, $filtered_transcript_scores);
+  }
+
+  # rnaproducts
+  if ($mapping_types{'rnaproduct'}) {
+    $logger->debug("rnaproducts\n", 1);
+    $stable_id_mapper->generate_rnaproduct_similarity_events(
+      $rnaproduct_mappings, $filtered_transcript_scores);
   }
 
   # write stable_id_events to file
