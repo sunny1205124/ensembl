@@ -491,7 +491,6 @@ sub map_rnaproducts {
     # map rnaproducts for mapped transcripts
     #
     my $i = 0;
-
     foreach my $entry (@{ $transcript_mappings->get_all_Entries() }) {
 
       my $source_rps = $self->cache->get_by_key('transcripts_by_id',
@@ -558,6 +557,9 @@ sub map_rnaproducts {
 # comparisons between rnaproducts of source and target transcript, moreover
 # it explicitly rejects unsupported rnaproduct types and malformed input.
 # Used internally by map_rnaproducts().
+# FIXME: An identical function exists in
+# Bio::EnsEMBL::IdMapping::StableIdMapper and the code calling it is almost
+# the same here and there as well, we really should generalise it.
 sub _classify_rnaproducts {
   my ($message_tag, $rps) = @_;
 

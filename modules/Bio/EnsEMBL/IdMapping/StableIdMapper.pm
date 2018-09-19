@@ -377,7 +377,7 @@ sub generate_similarity_events {
     throw('Need a Bio::EnsEMBL::IdMapping::ScoredMappingMatrix.');
   }
 
-  throw("Need a type (gene|transcript|translation).") unless ($type);
+  throw("Need a type (gene|transcript|translation|rnaproduct).") unless ($type);
 
   my $mapped;
 
@@ -537,6 +537,118 @@ sub generate_translation_similarity_events {
   # now generate similarity events using this fake scoring matrix
   $self->generate_similarity_events($mappings, $translation_scores,
     'translation');
+}
+
+
+sub generate_rnaproduct_similarity_events {
+  my $self = shift;
+  my $mappings = shift;
+  my $transcript_scores = shift;
+
+  # argument checks
+  unless ($mappings and
+          $mappings->isa('Bio::EnsEMBL::IdMapping::MappingList')) {
+    throw('Need a gene Bio::EnsEMBL::IdMapping::MappingList.');
+  }
+
+  unless ($transcript_scores and
+      $transcript_scores->isa('Bio::EnsEMBL::IdMapping::ScoredMappingMatrix')) {
+    throw('Need a Bio::EnsEMBL::IdMapping::ScoredMappingMatrix.');
+  }
+
+  # create a fake rnaproduct scoring matrix
+  my $rnaproduct_scores = Bio::EnsEMBL::IdMapping::ScoredMappingMatrix->new(
+    -DUMP_PATH   => path_append($self->conf->param('basedir'), 'matrix'),
+    -CACHE_FILE  => 'rnaproduct_scores.ser',
+  );
+
+  foreach my $entry (@{ $transcript_scores->get_all_Entries() }) {
+
+    my $source_rps = $self->cache->get_by_key('transcripts_by_id',
+      'source', $entry->source)->get_all_RNAProducts();
+    my $target_rps = $self->cache->get_by_key('transcripts_by_id',
+      'target', $entry->target)->get_all_RNAProducts();
+
+    if ((scalar @{$source_rps} != 0) && (scalar @{$target_rps} != 0)) {
+      my %src_rp_map = _classify_rnaproducts('source', $source_rps);
+      my %tgt_rp_map = _classify_rnaproducts('target', $target_rps);
+
+      while (my ($rp_type, $type_submap) = each %src_rp_map) {
+
+        if ($rp_type eq 'Bio::EnsEMBL::MicroRNA') {
+
+          # Add a scoring-matrix entry for each existing pair of miRNA
+          # on the same arm of the hairpin, using the score
+          # of corresponding transcripts
+          while (my ($mirna_arm, $src_product) = each %{ $type_submap }) {
+            my $tgt_product = $src_rp_map{$rp_type}->{$mirna_arm};
+            if ($src_product && $tgt_product) {
+
+              # Note that the score is taken from the transcript pa
+              $rnaproduct_scores->add_score($src_product->id(),
+                                            $tgt_product->id(),
+                                            $entry->score());
+
+            }
+          }
+
+        }
+
+        # _classify_rnaproducts() will have filtered out unsupported types by now
+
+      }
+    }
+
+  }
+
+  # now generate similarity events using this fake scoring matrix
+  $self->generate_similarity_events($mappings, $rnaproduct_scores,
+                                    'rnaproduct');
+
+  return;
+}
+
+
+# For a given list of rnaproduct entries, tag them with type and
+# appropriate type-specific properties. Prevents having to make multiple
+# passes through rnaproduct lists in the course of (many-to-many)
+# comparisons between rnaproducts of source and target transcript, moreover
+# it explicitly rejects unsupported rnaproduct types and malformed input.
+# Used internally by generate_rnaproduct_similarity_events().
+# FIXME: An identical function exists in
+# Bio::EnsEMBL::IdMapping::InternalIdMapper and the code calling it is almost
+# the same here and there as well, we really should generalise it.
+sub _classify_rnaproducts {
+  my ($message_tag, $rps) = @_;
+
+  my %rp_map;
+  foreach my $rnaproduct (@{ $rps }) {
+    my $class_name = ref($rnaproduct);
+
+    if ($class_name eq 'Bio::EnsEMBL::MicroRNA') {
+      my $mirna_arm = $rnaproduct->arm();
+
+      # Sanity checks
+      if (!defined($mirna_arm)) {
+        throw("Malformed data: ${message_tag} MicroRNA '"
+              . $rnaproduct->display_id() . "' has no arm attribute");
+      }
+      if (exists($rp_map{$class_name}->{$mirna_arm})) {
+        throw("Malformed data: ${message_tag} transcript has multiple "
+              . "MicroRNA objects with arm=${mirna_arm}");
+      }
+
+      $rp_map{$class_name} = {
+        $mirna_arm => $rnaproduct,
+      };
+
+    }
+    else {
+      throw("I do not know how to map RNA-product type ${class_name}");
+    }
+  }
+
+  return %rp_map;
 }
 
 
