@@ -61,6 +61,8 @@ design.
   seq_md5_sum
   add_Translation
   translation
+  add_RNAProduct
+  get_all_RNAProducts
   add_Exon
   get_all_Exons
 
@@ -80,6 +82,7 @@ package Bio::EnsEMBL::IdMapping::TinyTranscript;
 # 11  [exons]
 # 12  biotype
 # 13  slice
+# 14  [rnaproducts]
 
 
 use strict;
@@ -232,6 +235,49 @@ sub add_Translation {
 
 sub translation {
   return $_[0]->[10];
+}
+
+
+=head2 add_RNAProduct
+
+  Arg[1]      : Bio::EnsEMBL::IdMapping::TinyRNAProduct $rnaproduct - rnaproduct to add
+  Example     : $tiny_transcript->add_RNAProduct($tiny_rnaproduct);
+  Description : Adds a rnaproduct to this transcript.
+  Return type : none
+  Exceptions  : thrown on wrong or missing argument
+  Caller      : general
+  Status      : At Risk
+              : under development
+
+=cut
+
+sub add_RNAProduct {
+  my ($self, $rnaproduct) = @_;
+
+  if (!defined($rnaproduct) || !$rnaproduct->isa('Bio::EnsEMBL::IdMapping::TinyRNAProduct')) {
+    throw('Need a Bio::EnsEMBL::IdMapping::TinyRNAProduct.');
+  }
+
+  push @{ $self->[14] }, $rnaproduct;
+}
+
+
+=head2 get_all_RNAProducts
+
+  Example     : foreach my $rnaproduct (@{ $tiny_transcript->get_all_RNAProducts() }) {
+                  # do something with rnaproduct
+                }
+  Description : Returns all rnaproducts attached to that transcript.
+  Return type : Arrayref of Bio::EnsEMBL::IdMapping::TinyRNAProduct objects
+  Exceptions  : none
+  Caller      : general
+  Status      : At Risk
+              : under development
+
+=cut
+
+sub get_all_RNAProducts {
+  return $_[0]->[14] || [];
 }
 
 

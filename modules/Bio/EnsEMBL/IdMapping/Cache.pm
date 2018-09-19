@@ -53,6 +53,7 @@ use Bio::EnsEMBL::Utils::Scalar qw(assert_ref);
 use Bio::EnsEMBL::IdMapping::TinyGene;
 use Bio::EnsEMBL::IdMapping::TinyTranscript;
 use Bio::EnsEMBL::IdMapping::TinyTranslation;
+use Bio::EnsEMBL::IdMapping::TinyRNAProduct;
 use Bio::EnsEMBL::IdMapping::TinyExon;
 use Bio::EnsEMBL::DBSQL::DBAdaptor;
 use Storable qw(nstore retrieve);
@@ -64,6 +65,7 @@ my @cache_names = qw(
     transcripts_by_id
     transcripts_by_exon_id
     translations_by_id
+    rnaproducts_by_id
     genes_by_id
     genes_by_transcript_id
 );
@@ -123,9 +125,10 @@ sub new {
                 Bio::EnsEMBL::Slice->name)
   Example     : my ($num_genes, $filesize) = $cache->build_cache_by_slice(
                   'source', 'chromosome:NCBI36:X:1:1000000:-1');
-  Description : Builds a cache of genes, transcripts, translations and exons
-                needed by the IdMapping application and serialises the resulting
-                cache object to a file, one slice at a time.
+  Description : Builds a cache of genes, transcripts, translations,
+                rnaproducts and exons needed by the IdMapping application
+                and serialises the resulting cache object to a file, one
+                slice at a time.
   Return type : list of the number of genes processed and the size of the
                 serialised cache file
   Exceptions  : thrown on invalid slice name
@@ -186,12 +189,13 @@ sub build_cache_by_slice {
 
   Arg[1]      : String $dbtype - db type (source|target)
   Example     : my ($num_genes, $filesize) = $cache->build_cache_all('source');
-  Description : Builds a cache of genes, transcripts, translations and exons
-                needed by the IdMapping application and serialises the
-                resulting cache object to a file. All genes across the genome
-                are processed in one go. This method should be used when
-                build_cache_by_seq_region can't be used due to a large number
-                of toplevel seq_regions (e.g. 2x genomes).
+  Description : Builds a cache of genes, transcripts, translations,
+                rnaproducts and exons needed by the IdMapping application
+                and serialises the resulting cache object to a file. All
+                genes across the genome are processed in one go. This method
+                should be used when build_cache_by_seq_region can't be used
+                due to a large number of toplevel seq_regions
+                (e.g. 2x genomes).
   Return type : list of the number of genes processed and the size of the
                 serialised cache file
   Exceptions  : thrown on invalid slice name
@@ -242,14 +246,14 @@ sub build_cache_all {
                 common coordinate system
   Example     : $cache->build_cache_from_genes(
                   'source.chromosome:NCBI36:X:1:100000:1', \@genes);
-  Description : Builds the cache by fetching transcripts, translations and exons
-                for a list of genes from the database, and creating lightweight
-                Bio::EnsEMBL::IdMapping::TinyFeature objects containing only the
-                data needed by the IdMapping application. These objects are
-                attached to a name cache in this cache object. Exons only need
-                to be projected to a commond coordinate system if their native
-                coordinate system isn't common to source and target assembly
-                itself.
+  Description : Builds the cache by fetching transcripts, translations,
+                rnaproducts and exons for a list of genes from the database,
+                and creating lightweight Bio::EnsEMBL::IdMapping::TinyFeature
+                objects containing only the data needed by the IdMapping
+                application. These objects are attached to a name cache in
+                this cache object. Exons only need to be projected to a
+                common coordinate system if their native coordinate system
+                isn't common to source and target assembly itself.
   Return type : int - number of genes after filtering
   Exceptions  : thrown on wrong or missing arguments
   Caller      : internal
@@ -356,6 +360,21 @@ sub build_cache_from_genes {
         $self->add( 'translations_by_id', $type, $tl->dbID, $ltl );
 
         undef $tl;
+      }
+
+      # rnaproducts, if there are any
+      foreach my $rnaproduct (@{ $tr->get_all_RNAProducts() }) {
+        my $lrp = Bio::EnsEMBL::IdMapping::TinyRNAProduct->new_fast([
+          $rnaproduct->dbID(),          $rnaproduct->stable_id(),
+          $rnaproduct->version(),       $rnaproduct->created_date(),
+          $rnaproduct->modified_date(), $tr->dbID(),
+          $rnaproduct->seq(),
+        ]);
+
+        $ltr->add_RNAProduct($lrp);
+        $self->add('rnaproducts_by_id', $type, $rnaproduct->dbID, $lrp);
+
+        undef $rnaproduct;
       }
 
       # exons
@@ -866,6 +885,7 @@ sub check_empty_tables {
       gene_stable_id
       transcript_stable_id
       translation_stable_id
+      rnaproduct_stable_id
       exon_stable_id
       stable_id_event
       mapping_session
