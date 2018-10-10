@@ -266,6 +266,7 @@ sub is_valid {
                     - exons: if exon sequence changed
                     - transcript: if spliced exon sequence changed or if number of exons changed
                     - translation: if translated sequence changed
+                    - rnaproduct: if its sequence changed
                     - gene: if any of its transcript changed
   Return type : String - the version to be used
   Exceptions  : thrown on wrong argument
@@ -318,6 +319,12 @@ sub calculate_version {
   elsif ( $s_obj->isa('Bio::EnsEMBL::IdMapping::TinyTranslation') ) {
     # increment version if transcript or translation sequences changed
     if ( $s_obj->seq() ne $t_obj->seq() ) { ++$version }
+  }
+  elsif ( $s_obj->isa('Bio::EnsEMBL::IdMapping::TinyRNAProduct') ) {
+    # increment version if sequence changed
+    if ( $s_obj->seq() ne $t_obj->seq() ) {
+      ++$version;
+    }
   }
   elsif ( $s_obj->isa('Bio::EnsEMBL::IdMapping::TinyGene') ) {
     # increment version if any transcript changed
