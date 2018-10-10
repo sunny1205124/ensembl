@@ -58,6 +58,7 @@ The tables that will be emptied are:
   gene_stable_id
   transcript_stable_id
   translation_stable_id
+  rnaproduct_stable_id
   exon_stable_id
   mapping_session
   stable_id_event
@@ -103,6 +104,7 @@ my @tables = qw(
   gene_stable_id
   transcript_stable_id
   translation_stable_id
+  rnaproduct_stable_id
   exon_stable_id
   mapping_session
   stable_id_event
