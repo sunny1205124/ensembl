@@ -29,6 +29,7 @@ use Bio::EnsEMBL::Transcript;
 use Bio::EnsEMBL::Translation;
 use Bio::EnsEMBL::Gene;
 use Bio::EnsEMBL::DnaDnaAlignFeature;
+use Test::Warnings qw(warning);
 
 my $human = Bio::EnsEMBL::Test::MultiTestDB->new('homo_sapiens');
 my $mouse = Bio::EnsEMBL::Test::MultiTestDB->new('mus_musculus');
